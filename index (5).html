@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>選手抽選</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#06142e;--navy:#0b2250;--navy2:#143272;--gold:#c9a24b;--gold2:#f2dc95;--paper:#f6efdc}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;background:var(--ink);color:var(--paper);font-family:'Zen Kaku Gothic New',sans-serif}
+body{background:radial-gradient(120% 70% at 50% 0%,#12307a 0%,var(--ink) 60%)}
+main{max-width:420px;margin:0 auto;min-height:100vh;padding:24px 20px 40px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:20px}
+.view{display:none;width:100%;flex-direction:column;align-items:center;gap:18px}
+.view.on{display:flex}
+h1{font-family:'Dela Gothic One',sans-serif;font-weight:400;font-size:34px;line-height:1.25;margin:0;text-align:center;color:var(--gold2)}
+p{margin:0;text-align:center;line-height:1.7;font-size:15px}
+.sub{opacity:.8}
+.btn{width:100%;border:0;border-radius:14px;padding:18px 16px;font:700 18px 'Zen Kaku Gothic New',sans-serif;cursor:pointer;color:var(--ink);background:linear-gradient(180deg,var(--gold2),var(--gold));box-shadow:0 6px 0 #8a6b25}
+.btn:active{transform:translateY(4px);box-shadow:0 2px 0 #8a6b25}
+.btn small{display:block;font-size:12px;font-weight:500;margin-top:4px}
+.btn.ghost{background:transparent;color:var(--paper);border:2px solid rgba(246,239,220,.45);box-shadow:none}
+.btn:disabled{opacity:.5}
+:focus-visible{outline:3px solid var(--gold2);outline-offset:3px}
+
+/* カード */
+/* カード(選手カード画像そのものを、切り取らず全体表示) */
+.cardwrap{position:relative;width:min(100%,320px)}
+.fullcard{display:block;width:100%;height:auto;box-shadow:0 20px 40px rgba(0,0,0,.55)}
+.phfull{width:100%;aspect-ratio:5/7;background:#0a1a3d;display:flex;align-items:center;justify-content:center;font-family:'Dela Gothic One',sans-serif;font-size:90px;color:rgba(242,220,149,.35)}
+.date{text-align:center;font-size:13px;font-weight:700;color:var(--gold2);letter-spacing:.04em}
+.stamp{display:none;position:absolute;right:-8px;top:24px;transform:rotate(-14deg);border:4px solid #ff6b5e;color:#ff6b5e;background:rgba(6,20,46,.8);font-family:'Dela Gothic One',sans-serif;font-size:28px;padding:4px 14px;border-radius:8px;z-index:2}
+.cardwrap.done .stamp{display:block}
+.cardwrap.flip{animation:flip .8s cubic-bezier(.2,.8,.2,1)}
+@keyframes flip{from{transform:rotateY(90deg) scale(.8);opacity:0}to{transform:none;opacity:1}}
+
+/* 抽選中(選手カードのカルーセル。取得できないときは番号表示) */
+.roll{font-family:'Dela Gothic One',sans-serif;font-size:96px;color:var(--gold2);min-width:3ch;text-align:center}
+.carousel{display:none;width:100%;overflow:hidden;padding:12px 0;-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+.carousel.on{display:block}
+.track{display:flex;gap:16px;width:max-content;will-change:transform}
+.citem{flex:0 0 auto;width:180px}
+.citem img{display:block;width:100%;height:auto;box-shadow:0 14px 28px rgba(0,0,0,.5)}
+.citem.hot img{box-shadow:0 0 0 3px var(--gold),0 18px 36px rgba(0,0,0,.65)}
+
+/* スワイプ */
+.slide{--p:0;position:relative;width:100%;height:68px;border-radius:34px;background:rgba(246,239,220,.12);border:2px solid var(--gold);overflow:hidden;touch-action:none;user-select:none}
+.slide::before{content:"";position:absolute;inset:0;width:calc(var(--p)*100%);background:var(--gold);opacity:.35}
+.slabel{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;padding-left:56px}
+.handle{position:absolute;left:4px;top:4px;width:56px;height:56px;border-radius:50%;background:linear-gradient(180deg,var(--gold2),var(--gold));color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:700;touch-action:none;cursor:grab}
+.staff{font-size:13px;color:var(--gold2);border:1px dashed var(--gold);border-radius:8px;padding:8px 12px}
+
+/* 完了 */
+.clock{font-family:'Dela Gothic One',sans-serif;font-size:40px;color:var(--gold2);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+
+/* 応援コメント */
+.cmt{width:100%;display:flex;flex-direction:column;gap:10px}
+.cmt label{font-weight:700;font-size:15px;color:var(--gold2);text-align:center}
+.cmt textarea{width:100%;border:2px solid var(--gold);border-radius:12px;background:rgba(246,239,220,.1);color:var(--paper);padding:12px;font:500 15px 'Zen Kaku Gothic New',sans-serif;resize:vertical;min-height:76px}
+.cmt textarea::placeholder{color:rgba(246,239,220,.45)}
+.cmt .done-note{text-align:center;font-size:13px;color:var(--gold2)}
+.err{color:#ff9c92}
+@media (prefers-reduced-motion:reduce){.cardwrap.flip{animation:none}}
+</style>
+</head>
+<body>
+<main>
+
+  <section class="view" id="v-load"><p class="sub">読み込み中…</p></section>
+
+  <section class="view" id="v-start">
+    <h1>選手抽選を<br>スタート!</h1>
+    <p class="sub">抽選は1日1回までです。<br>ボタンを押すと選手が決まります。</p>
+    <button class="btn" id="btnStart">選手抽選をスタート!</button>
+  </section>
+
+  <section class="view" id="v-roll">
+    <p class="sub">抽選中…</p>
+    <div class="carousel" id="carousel"><div class="track" id="track"></div></div>
+    <div class="roll" id="roll">00</div>
+  </section>
+
+  <section class="view" id="v-card">
+    <div class="cardwrap" id="cardWrap">
+      <div id="cPhoto"></div>
+      <div class="stamp">受取済</div>
+    </div>
+    <div class="date" id="cDate"></div>
+
+    <div class="view on" id="doneBox" style="display:none">
+      <h1 style="font-size:26px">特典を受け取りました</h1>
+      <div class="clock" id="clock">--:--:--</div>
+      <p class="sub" id="claimedAt"></p>
+    </div>
+
+    <div class="cmt" id="commentBox" style="display:none">
+      <label for="commentText" id="commentLabel">当たった選手へ応援コメント</label>
+      <textarea id="commentText" maxlength="200" placeholder="例：次の登板も全力で応援します！"></textarea>
+      <button class="btn" id="btnComment">コメントを送る</button>
+      <p class="done-note" id="commentNote" style="display:none">送信済みです。修正もできます。</p>
+    </div>
+
+    <div class="view on" id="claimBox">
+      <button class="btn" id="btnClaim">特典を受け取る。<small>(スタッフが操作してください)</small></button>
+    </div>
+
+    <div class="view" id="confirmBox">
+      <div class="staff">スタッフの方が画面を確認し、スワイプしてください</div>
+      <div class="slide" id="slide">
+        <div class="slabel">スワイプする</div>
+        <div class="handle" id="handle" role="slider" aria-label="スワイプして受け取り完了">›</div>
+      </div>
+      <button class="btn ghost" id="btnBack">戻る</button>
+    </div>
+  </section>
+
+  <section class="view" id="v-err">
+    <h1 style="font-size:24px" class="err">エラーが発生しました</h1>
+    <p id="errMsg"></p>
+    <button class="btn" id="btnRetry">もう一度読み込む</button>
+  </section>
+
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+
+/* ★設定: Apps Script をウェブアプリとしてデプロイしたときの /exec URL を貼ってください */
+const API_URL = 'https://script.google.com/macros/s/AKfycbypQFWoec7egfzt0wpLOUTSrraK8SrZAojttyIbNvFFeieCka22CVLqnP8BH_5BqRW3/exec';
+
+/* Apps Script API を JSONP で呼ぶ(google.script.run の置き換え。CORS回避のため) */
+let cbSeq = 0;
+const run = (action, deviceId, extra) => new Promise((resolve, reject) => {
+  if (!API_URL || API_URL.indexOf('script.google.com') === -1) {
+    return reject(new Error('API_URL が未設定です。index.html の API_URL を確認してください。'));
+  }
+  const cb = '__lottery_cb_' + Date.now() + '_' + (++cbSeq);
+  const script = document.createElement('script');
+  const timer = setTimeout(() => { cleanup(); reject(new Error('通信がタイムアウトしました。')); }, 25000);
+  function cleanup() { clearTimeout(timer); try { delete window[cb]; } catch (e) { window[cb] = undefined; } if (script.parentNode) script.parentNode.removeChild(script); }
+  window[cb] = data => { cleanup(); resolve(data); };
+  script.onerror = () => { cleanup(); reject(new Error('通信に失敗しました。')); };
+  let qs = '?action=' + encodeURIComponent(action)
+    + '&deviceId=' + encodeURIComponent(deviceId)
+    + '&callback=' + cb
+    + '&_=' + Date.now();
+  if (extra) for (const k in extra) qs += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(extra[k]);
+  script.src = API_URL + qs;
+  document.head.appendChild(script);
+});
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const KEY = 'orix_lottery_device_id';
+let state = null, clockTimer = null;
+
+/* 端末ID:初回のみ生成してブラウザに保存 */
+function deviceId() {
+  let id = null;
+  try { id = localStorage.getItem(KEY); } catch (e) {}
+  if (!id) {
+    const rnd = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now() + '' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2));
+    id = rnd.replace(/[^A-Za-z0-9]/g, '').slice(0, 48).padEnd(16, 'x');
+    try { localStorage.setItem(KEY, id); } catch (e) {}
+  }
+  return id;
+}
+const DID = deviceId();
+
+function show(id) {
+  document.querySelectorAll('main > .view').forEach(v => v.classList.remove('on'));
+  $(id).classList.add('on');
+}
+
+function setPhoto(p) {
+  const box = $('cPhoto');
+  box.innerHTML = '';
+  const ph = () => { box.innerHTML = '<div class="phfull"></div>'; box.firstChild.textContent = (p.name || '?').charAt(0); };
+  if (!p.photo) return ph();
+  const img = new Image();
+  img.alt = p.name; img.className = 'fullcard'; img.onerror = ph; img.src = p.photo;
+  box.appendChild(img);
+}
+
+/* 抽選中シャッフル用に選手カード一覧を先読みする */
+let playersList = [];
+async function loadPlayers() {
+  try {
+    const r = await run('players', DID);
+    if (r && r.players && r.players.length) {
+      playersList = r.players.filter(p => p.photo);
+      playersList.forEach(p => { const i = new Image(); i.src = p.photo; });
+    }
+  } catch (e) {}
+}
+
+function render(s, animate) {
+  clearInterval(clockTimer);
+  if (s.error) return fail(s.error);
+  state = s;
+  if (s.status === 'none') return show('v-start');
+
+  $('cDate').textContent = s.dateLabel;
+  setPhoto(s.player);
+
+  const claimed = s.status === 'claimed';
+  $('cardWrap').classList.toggle('done', claimed);
+  $('doneBox').style.display = claimed ? 'flex' : 'none';
+  $('commentBox').style.display = claimed ? 'flex' : 'none';
+  if (claimed) {
+    $('commentLabel').textContent = s.player.name + ' 選手へ応援コメント';
+    if (document.activeElement !== $('commentText')) $('commentText').value = s.comment || '';
+    $('commentNote').style.display = s.comment ? 'block' : 'none';
+    $('btnComment').textContent = s.comment ? 'コメントを修正する' : 'コメントを送る';
+  }
+  $('claimBox').style.display = claimed ? 'none' : 'flex';
+  $('confirmBox').classList.remove('on');
+  $('claimBox').classList.add('on');
+  resetHandle();
+
+  if (claimed) {
+    $('claimedAt').textContent = '受取時刻 ' + s.claimedAt;
+    const tick = () => { const d = new Date(); $('clock').textContent = d.toTimeString().slice(0, 8) + '.' + String(Math.floor(d.getMilliseconds() / 10)).padStart(2, '0'); };
+    tick(); clockTimer = setInterval(tick, 50);
+  }
+  show('v-card');
+  if (animate) { const c = $('cardWrap'); c.classList.remove('flip'); void c.offsetWidth; c.classList.add('flip'); }
+}
+
+function fail(msg) { $('errMsg').textContent = msg || '通信に失敗しました。'; show('v-err'); }
+
+async function load() {
+  show('v-load');
+  loadPlayers();
+  try { render(await run('status', DID)); } catch (e) { fail('通信に失敗しました。電波の良い場所で再読み込みしてください。'); }
+}
+
+/* 抽選(カルーセルを回して、当選カードのところで止める) */
+const STEP = 196; /* カード幅180 + 間隔16 */
+let rafId = null;
+
+function buildTrack() {
+  const track = $('track');
+  track.innerHTML = '';
+  for (let r = 0; r < 4; r++) {
+    playersList.forEach(p => {
+      const d = document.createElement('div');
+      d.className = 'citem';
+      const img = new Image(); img.src = p.photo; img.alt = p.name;
+      d.appendChild(img); track.appendChild(d);
+    });
+  }
+  return playersList.length * STEP;
+}
+
+function setTrack(offset) {
+  const w = $('carousel').clientWidth;
+  $('track').style.transform = 'translateX(' + (w / 2 - 90 - offset) + 'px)';
+}
+
+$('btnStart').onclick = async () => {
+  if (!playersList.length) await loadPlayers();
+  show('v-roll');
+  const hasCards = playersList.length > 0;
+  $('carousel').classList.toggle('on', hasCards);
+  $('roll').style.display = hasCards ? 'none' : 'block';
+
+  if (!hasCards) {
+    const timer = setInterval(() => { $('roll').textContent = String(Math.floor(Math.random() * 99) + 1).padStart(2, '0'); }, 70);
+    try {
+      const [s] = await Promise.all([run('draw', DID), sleep(1800)]);
+      clearInterval(timer);
+      render(s, true);
+    } catch (e) { clearInterval(timer); fail('通信に失敗しました。もう一度お試しください。'); }
+    return;
+  }
+
+  const setW = buildTrack();
+  const N = playersList.length;
+  let offset = 0;
+  let spinning = true;
+  const spin = () => {
+    if (!spinning) return;
+    offset = (offset + 9) % setW;
+    setTrack(offset);
+    rafId = requestAnimationFrame(spin);
+  };
+  setTrack(0);
+  spin();
+
+  try {
+    const [s] = await Promise.all([run('draw', DID), sleep(1500)]);
+    if (s.error) { spinning = false; cancelAnimationFrame(rafId); return fail(s.error); }
+
+    /* 当選選手のカード(今の位置より1周以上先)で止める */
+    let wi = playersList.findIndex(p => p.name === (s.player || {}).name && String(p.number) === String((s.player || {}).number));
+    if (wi < 0) wi = 0;
+    const startK = Math.round(offset / STEP) + N;
+    let k = startK + (((wi - startK) % N) + N) % N;
+    if (k > 4 * N - 2) k -= N;
+
+    spinning = false;
+    cancelAnimationFrame(rafId);
+    const from = offset, to = k * STEP, t0 = performance.now(), dur = 1400;
+    const anim = t => {
+      const pr = Math.min(1, (t - t0) / dur);
+      const e = 1 - Math.pow(1 - pr, 3);
+      setTrack(from + (to - from) * e);
+      if (pr < 1) { rafId = requestAnimationFrame(anim); return; }
+      const hot = $('track').children[k];
+      if (hot) hot.classList.add('hot');
+      setTimeout(() => render(s, true), 400);
+    };
+    rafId = requestAnimationFrame(anim);
+  } catch (e) {
+    spinning = false;
+    cancelAnimationFrame(rafId);
+    fail('通信に失敗しました。もう一度お試しください。');
+  }
+};
+
+/* 特典を受け取る → スワイプ/戻る */
+/* 応援コメント送信 */
+$('btnComment').onclick = async () => {
+  const text = $('commentText').value.trim();
+  if (!text) return alert('コメントを入力してください。');
+  const btn = $('btnComment');
+  btn.disabled = true;
+  try {
+    const s = await run('comment', DID, { comment: text });
+    if (s && s.error) { alert(s.error); }
+    else { render(s); alert('応援コメントを送りました。'); }
+  } catch (e) { alert('通信に失敗しました。もう一度お試しください。'); }
+  btn.disabled = false;
+};
+
+$('btnClaim').onclick = () => { $('claimBox').classList.remove('on'); $('claimBox').style.display = 'none'; $('confirmBox').classList.add('on'); };
+$('btnBack').onclick = () => { $('confirmBox').classList.remove('on'); $('claimBox').classList.add('on'); $('claimBox').style.display = 'flex'; resetHandle(); };
+$('btnRetry').onclick = load;
+
+/* スワイプ操作 */
+const slide = $('slide'), handle = $('handle');
+let drag = false, sx = 0, cur = 0, max = 0, busy = false;
+function resetHandle() {
+  handle.style.transition = 'transform .25s'; handle.style.transform = 'translateX(0)';
+  slide.style.setProperty('--p', 0); cur = 0; busy = false;
+  slide.querySelector('.slabel').textContent = 'スワイプする';
+}
+handle.addEventListener('pointerdown', e => {
+  if (busy) return;
+  drag = true; sx = e.clientX; max = slide.clientWidth - handle.offsetWidth - 8;
+  handle.setPointerCapture(e.pointerId); handle.style.transition = 'none';
+});
+handle.addEventListener('pointermove', e => {
+  if (!drag) return;
+  cur = Math.max(0, Math.min(max, e.clientX - sx));
+  handle.style.transform = 'translateX(' + cur + 'px)';
+  slide.style.setProperty('--p', cur / max);
+});
+async function release() {
+  if (!drag) return; drag = false;
+  if (cur < max * 0.9) return resetHandle();
+  busy = true;
+  handle.style.transition = 'transform .15s'; handle.style.transform = 'translateX(' + max + 'px)';
+  slide.querySelector('.slabel').textContent = '確認中…';
+  try { render(await run('claim', DID), true); } catch (e) { resetHandle(); alert('通信に失敗しました。もう一度スワイプしてください。'); }
+}
+handle.addEventListener('pointerup', release);
+handle.addEventListener('pointercancel', release);
+
+load();
+</script>
+</body>
+</html>
